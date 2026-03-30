@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.salarycalc"
-        minSdk = 26
+        minSdk = 1
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
