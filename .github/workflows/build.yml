@@ -26,17 +26,12 @@ jobs:
 
       - name: Build debug APK
         run: |
-          pwd
-          ls -la
-          bash gradlew assembleDebug --no-daemon
-          echo "--- Build result ---"
-          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "APK dir not found"
+          bash gradlew assembleDebug --no-daemon 2>&1 | tail -20
+          echo "---"
+          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "No APK dir"
 
       - name: Upload APK
         if: success()
-        run: |
-          echo "Uploading APK..."
-          ls -la app/build/outputs/apk/debug/ || echo "No APK dir"
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
