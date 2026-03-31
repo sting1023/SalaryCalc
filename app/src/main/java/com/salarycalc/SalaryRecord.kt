@@ -2,34 +2,34 @@ package com.salarycalc
 
 data class SalaryRecord(
     val date: String,
-    val hourlyRate: Double,  // 用户填写的实际时薪（已乘完倍率）
+    val hourlyRate: Double,       // 原始时薪（不含倍率）
+    val multiplier: Double,       // 实际倍率（用户填的）
     val hours: Double,
     val dailyRate: Double,
-    val isLegalHoliday: Boolean,   // 法定节假日（春节/国庆等，3倍）
-    val isHoliday: Boolean,         // 普通节假日（自定义，2倍）
+    val isHoliday: Boolean,
     val isWeekend: Boolean,
     val bonus: Double,
     val note: String
 ) {
-    val total: Double
-        get() = if (dailyRate > 0) dailyRate + bonus else hourlyRate * hours + bonus
+    /** 实际时薪 = 原始时薪 × 倍率 */
+    val effectiveRate: Double get() = hourlyRate * multiplier
+    /** 小计 = 实际时薪 × 小时数 */
+    val hourlySubtotal: Double get() = effectiveRate * hours
+    /** 总计 = (时薪模式?小计:日薪) + 奖金 */
+    val total: Double get() = if (dailyRate > 0) dailyRate + bonus else hourlySubtotal + bonus
 
     companion object {
         fun fromForm(
-            date: String, hourlyRate: Double, hours: Double,
-            dailyRate: Double, isLegalHoliday: Boolean, isHoliday: Boolean,
-            isWeekend: Boolean, bonus: Double, note: String
-        ) = SalaryRecord(date, hourlyRate, hours, dailyRate, isLegalHoliday, isHoliday, isWeekend, bonus, note)
+            date: String, hourlyRate: Double, multiplier: Double, hours: Double,
+            dailyRate: Double, isHoliday: Boolean, isWeekend: Boolean,
+            bonus: Double, note: String
+        ) = SalaryRecord(date, hourlyRate, multiplier, hours, dailyRate, isHoliday, isWeekend, bonus, note)
     }
 }
 
 data class SalarySettings(
     val normalHourlyRate: Double = 20.0,
-    val weekendMultiplier: Double = 2.0,          // 周末倍率，默认2倍
-    val holidayMultiplier: Double = 2.0,         // 普通节假日倍率，默认2倍
-    val legalHolidayMultiplier: Double = 3.0,    // 法定节假日倍率，默认3倍
-    val customHolidays: Set<String> = emptySet(),      // 普通节假日（2倍）
-    val legalHolidayDates: Set<String> = emptySet()       // 法定节假日（3倍），格式 yyyy-MM-dd
+    val normalDailyRate: Double = 0.0
 )
 
 data class MonthStats(
