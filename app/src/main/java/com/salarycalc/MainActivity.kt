@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var currentYear = 0
     private var currentMonth = 0
     private var selectedDate = ""
+    private var isLegalHoliday = false
     private var isHoliday = false
     private var isWeekend = false
     private var useDailyMode = false
@@ -120,31 +121,28 @@ class MainActivity : AppCompatActivity() {
         selCal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
         tvSelectedDate.text = dayDisplayFormat.format(selCal.time)
 
-        // 自动判断节假日/周末
-        isHoliday = ds.isHoliday(selectedDate)
+        // 自动判断节假日类型（优先级：法定节假日 > 普通节假日 > 周末）
+        isLegalHoliday = ds.isLegalHoliday(selectedDate)
+        isHoliday = !isLegalHoliday && ds.isHoliday(selectedDate)
         val dow = selCal.get(Calendar.DAY_OF_WEEK)
-        isWeekend = dow == Calendar.SATURDAY || dow == Calendar.SUNDAY
+        isWeekend = !isLegalHoliday && !isHoliday && (dow == Calendar.SATURDAY || dow == Calendar.SUNDAY)
 
         val record = ds.getRecord(selectedDate)
         if (record != null) {
-            // 有记录，读取保存的值
+            // 有记录 → 读保存的值
             useDailyMode = record.dailyRate > 0
             tvDayTotal.text = "¥${String.format("%.2f", record.total)}"
-            tvDayStatus.text = typeLabel(record.isHoliday, record.isWeekend)
+            tvDayStatus.text = typeLabel(record.isLegalHoliday, record.isHoliday, record.isWeekend)
             etHourlyRate.setText(String.format("%.1f", record.hourlyRate))
             etHours.setText(String.format("%.1f", record.hours))
             etDailyRate.setText(if (record.dailyRate > 0) String.format("%.1f", record.dailyRate) else "")
             etBonus.setText(if (record.bonus > 0) String.format("%.1f", record.bonus) else "")
             btnDelete.visibility = View.VISIBLE
         } else {
-            // 无记录 → 自动套用预设时薪
+            // 无记录 → 自动套用倍率
             tvDayTotal.text = "¥0.00"
-            tvDayStatus.text = typeLabel(isHoliday, isWeekend)
-            val autoRate = when {
-                isHoliday -> settings.holidayHourlyRate
-                isWeekend  -> settings.weekendHourlyRate
-                else       -> settings.normalHourlyRate
-            }
+            tvDayStatus.text = typeLabel(isLegalHoliday, isHoliday, isWeekend)
+            val autoRate = calcAutoRate(isLegalHoliday, isHoliday, isWeekend)
             etHourlyRate.setText(String.format("%.1f", autoRate))
             etHours.setText("")
             etDailyRate.setText("")
@@ -157,10 +155,26 @@ class MainActivity : AppCompatActivity() {
         lvRecords.adapter = RecordAdapter(ds.getRecordsForMonth(currentYear, currentMonth))
     }
 
-    private fun typeLabel(holiday: Boolean, weekend: Boolean) = when {
-        holiday -> "节假日"
-        weekend -> "周末"
-        else -> "工作日"
+    /**
+     * 根据日期类型计算预设时薪
+     * 法定节假日 > 普通节假日 > 周末 > 工作日
+     */
+    private fun calcAutoRate(legalHol: Boolean, hol: Boolean, wknd: Boolean): Double {
+        val base = settings.normalHourlyRate
+        return when {
+            legalHol -> base * settings.legalHolidayMultiplier
+            hol      -> base * settings.holidayMultiplier
+            wknd     -> base * settings.weekendMultiplier
+            else     -> base
+        }
+    }
+
+    /** 状态标签文字，优先级：法定节假日 > 普通节假日 > 周末 > 工作日 */
+    private fun typeLabel(legalHol: Boolean, hol: Boolean, wknd: Boolean) = when {
+        legalHol -> "法定节假日"
+        hol      -> "节假日"
+        wknd     -> "周末"
+        else     -> "工作日"
     }
 
     private fun applyModeUI() {
@@ -221,7 +235,9 @@ class MainActivity : AppCompatActivity() {
                     val isSelected = dayStr == selectedDate
                     val isToday = isCurrentMonth && day == todayCal.get(Calendar.DAY_OF_MONTH)
                     val hasRecord = recordMap.containsKey(dayStr)
-                    val isHol = ds.isHoliday(dayStr)
+                    val isHol     = ds.isHoliday(dayStr)
+                    val isLglHol  = ds.isLegalHoliday(dayStr)
+                    val isWknd    = !isLglHol && !isHol && (isSat || isSun)
 
                     val label = if (hasRecord) "$day\n●" else day.toString()
                     val tv = TextView(this).apply {
@@ -233,6 +249,12 @@ class MainActivity : AppCompatActivity() {
                             resources.getDimensionPixelSize(R.dimen.day_cell_height), 1f)
                         layoutParams = lp2
 
+                        val cellTypeColor = when {
+                            isLglHol -> getColor(context, R.color.legal_holiday_color)
+                            isHol    -> getColor(context, R.color.holiday_color)
+                            isSat || isSun -> getColor(context, R.color.weekend_color)
+                            else -> Color.parseColor("#333333")
+                        }
                         when {
                             isSelected -> {
                                 setBackgroundColor(getColor(context, R.color.primary))
@@ -244,11 +266,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             else -> {
                                 setBackgroundColor(Color.TRANSPARENT)
-                                setTextColor(when {
-                                    isHol -> getColor(context, R.color.holiday_color)
-                                    isSat || isSun -> getColor(context, R.color.weekend_color)
-                                    else -> Color.parseColor("#333333")
-                                })
+                                setTextColor(cellTypeColor)
                             }
                         }
                         setOnClickListener {
@@ -275,7 +293,10 @@ class MainActivity : AppCompatActivity() {
             val total = rate * hours + bonus
             tvDayTotal.text = "¥${String.format("%.2f", total)}"
             ds.saveRecord(
-                SalaryRecord.fromForm(selectedDate, rate, hours, 0.0, isHoliday, isWeekend, bonus, "")
+                SalaryRecord.fromForm(
+                    selectedDate, rate, hours, 0.0,
+                    isLegalHoliday, isHoliday, isWeekend, bonus, ""
+                )
             )
         } else {
             val daily = etDailyRate.text.toString().toDoubleOrNull() ?: 0.0
@@ -283,7 +304,10 @@ class MainActivity : AppCompatActivity() {
             val total = daily + bonus
             tvDayTotal.text = "¥${String.format("%.2f", total)}"
             ds.saveRecord(
-                SalaryRecord.fromForm(selectedDate, 0.0, 0.0, daily, isHoliday, isWeekend, bonus, "")
+                SalaryRecord.fromForm(
+                    selectedDate, 0.0, 0.0, daily,
+                    isLegalHoliday, isHoliday, isWeekend, bonus, ""
+                )
             )
         }
         Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
@@ -313,19 +337,23 @@ class MainActivity : AppCompatActivity() {
         )
         dialog.show()
 
-        val etNormal = dialog.findViewById<EditText>(R.id.et_normal_rate)!!
-        val etHol    = dialog.findViewById<EditText>(R.id.et_holiday_rate)!!
-        val etWeekend = dialog.findViewById<EditText>(R.id.et_weekend_rate)!!
-        val etHols   = dialog.findViewById<EditText>(R.id.et_holidays)!!
+        val etNormal   = dialog.findViewById<EditText>(R.id.et_normal_rate)!!
+        val etWkndMult = dialog.findViewById<EditText>(R.id.et_weekend_multiplier)!!
+        val etHolMult  = dialog.findViewById<EditText>(R.id.et_holiday_multiplier)!!
+        val etLglMult  = dialog.findViewById<EditText>(R.id.et_legal_holiday_multiplier)!!
+        val etHol      = dialog.findViewById<EditText>(R.id.et_holidays)!!
+        val etLglHol   = dialog.findViewById<EditText>(R.id.et_legal_holidays)!!
+
         dialog.findViewById<Button>(R.id.btn_save)!!.setOnClickListener {
-            val n  = etNormal.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val h  = etHol.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val w  = etWeekend.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val holSet = etHols.text.toString().split("\n")
-                .map { it.trim() }
-                .filter { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }
-                .toSet()
-            ds.saveSettings(SalarySettings(n, h, w, holSet))
+            val n   = etNormal.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val wm  = etWkndMult.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val hm  = etHolMult.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val lhm = etLglMult.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val holSet = etHol.text.toString().split("\n")
+                .map { it.trim() }.filter { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }.toSet()
+            val lglSet = etLglHol.text.toString().split("\n")
+                .map { it.trim() }.filter { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }.toSet()
+            ds.saveSettings(SalarySettings(n, wm, hm, lhm, holSet, lglSet))
             Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
             updateAll()
             dialog.dismiss()
@@ -333,10 +361,12 @@ class MainActivity : AppCompatActivity() {
         dialog.findViewById<Button>(R.id.btn_cancel)!!.setOnClickListener { dialog.dismiss() }
 
         val s = ds.loadSettings()
-        etNormal.setText(String.format("%.1f", s.normalHourlyRate))
-        etHol.setText(String.format("%.1f", s.holidayHourlyRate))
-        etWeekend.setText(String.format("%.1f", s.weekendHourlyRate))
-        etHols.setText(s.customHolidays.joinToString("\n"))
+        etNormal.text.clear();   etNormal.text.append(String.format("%.1f", s.normalHourlyRate))
+        etWkndMult.text.clear(); etWkndMult.text.append(String.format("%.1f", s.weekendMultiplier))
+        etHolMult.text.clear();  etHolMult.text.append(String.format("%.1f", s.holidayMultiplier))
+        etLglMult.text.clear();  etLglMult.text.append(String.format("%.1f", s.legalHolidayMultiplier))
+        etHol.text.clear();     etHol.text.append(s.customHolidays.joinToString("\n"))
+        etLglHol.text.clear();  etLglHol.text.append(s.legalHolidayDates.joinToString("\n"))
     }
 
     inner class RecordAdapter(private val records: List<SalaryRecord>) : BaseAdapter() {
@@ -357,6 +387,7 @@ class MainActivity : AppCompatActivity() {
                 "¥${String.format("%.2f", r.total)}$bonusStr"
             val flag = v.findViewById<TextView>(R.id.tv_flag)
             val (text, color) = when {
+                r.isLegalHoliday -> "法定节假日" to getColor(this@MainActivity, R.color.legal_holiday_color)
                 r.isHoliday -> "节假日" to getColor(this@MainActivity, R.color.holiday_color)
                 r.isWeekend -> "周末" to getColor(this@MainActivity, R.color.weekend_color)
                 else -> "工作" to getColor(this@MainActivity, R.color.workday_color)
