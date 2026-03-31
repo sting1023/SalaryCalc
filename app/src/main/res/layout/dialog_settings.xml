@@ -9,56 +9,22 @@
         android:padding="24dp">
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="⚙️ 默认时薪设置" android:textSize="20sp" android:textStyle="bold"
+            android:text="⚙️ 设置" android:textSize="20sp" android:textStyle="bold"
             android:textColor="#333" android:layout_marginBottom="20dp"/>
 
-        <!-- 正常工作日时薪 -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="正常工作日时薪（元/小时）" android:textSize="13sp" android:textColor="#666"/>
+            android:text="基本时薪（元/小时）" android:textSize="13sp" android:textColor="#666"/>
         <EditText android:id="@+id/et_normal_rate"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:inputType="numberDecimal" android:hint="例: 20" android:textSize="16sp"
             android:layout_marginBottom="14dp"/>
 
-        <!-- 周末倍率 -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="周末工资倍率（默认 2 倍）" android:textSize="13sp" android:textColor="#666"/>
-        <EditText android:id="@+id/et_weekend_multiplier"
+            android:text="基本日薪（元/天）" android:textSize="13sp" android:textColor="#666"/>
+        <EditText android:id="@+id/et_daily_rate"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:inputType="numberDecimal" android:hint="例: 2.0" android:textSize="16sp"
-            android:layout_marginBottom="14dp"/>
-
-        <!-- 普通节假日倍率 -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="普通节假日工资倍率（默认 2 倍）" android:textSize="13sp" android:textColor="#666"/>
-        <EditText android:id="@+id/et_holiday_multiplier"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:inputType="numberDecimal" android:hint="例: 2.0" android:textSize="16sp"
-            android:layout_marginBottom="14dp"/>
-
-        <!-- 法定节假日倍率 -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="法定节假日工资倍率（默认 3 倍）" android:textSize="13sp" android:textColor="#666"/>
-        <EditText android:id="@+id/et_legal_holiday_multiplier"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:inputType="numberDecimal" android:hint="例: 3.0" android:textSize="16sp"
-            android:layout_marginBottom="14dp"/>
-
-        <!-- 法定节假日列表 -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="法定节假日日期（3倍工资，每行一个，如 2026-01-28）" android:textSize="13sp" android:textColor="#666"/>
-        <EditText android:id="@+id/et_legal_holidays"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:inputType="textMultiLine" android:minLines="3" android:hint="2026-01-28\n2026-01-29\n2026-01-30\n2026-01-31\n2026-02-01\n2026-02-02\n2026-02-03\n2026-02-04"
-            android:textSize="14sp" android:layout_marginBottom="14dp"/>
-
-        <!-- 普通节假日列表 -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="普通节假日日期（2倍工资，每行一个，如 2026-04-04）" android:textSize="13sp" android:textColor="#666"/>
-        <EditText android:id="@+id/et_holidays"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:inputType="textMultiLine" android:minLines="2" android:hint=""
-            android:textSize="14sp" android:layout_marginBottom="20dp"/>
+            android:inputType="numberDecimal" android:hint="例: 150" android:textSize="16sp"
+            android:layout_marginBottom="20dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
