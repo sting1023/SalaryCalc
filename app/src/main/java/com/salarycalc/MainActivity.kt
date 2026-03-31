@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getColor
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,9 +28,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etHourlyRate: EditText
     private lateinit var etHours: EditText
     private lateinit var etDailyRate: EditText
+    private lateinit var etBonus: EditText
     private lateinit var llHourly: LinearLayout
     private lateinit var llDaily: LinearLayout
-    private lateinit var cbHoliday: CheckBox
     private lateinit var btnSave: Button
     private lateinit var btnDelete: Button
     private lateinit var btnPrevMonth: ImageButton
@@ -66,26 +65,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        tvYearMonth   = findViewById(R.id.tv_year_month)
-        tvMonthTotal  = findViewById(R.id.tv_month_total)
-        tvMonthHours  = findViewById(R.id.tv_month_hours)
-        calendarTable = findViewById(R.id.calendar_table)
+        tvYearMonth    = findViewById(R.id.tv_year_month)
+        tvMonthTotal   = findViewById(R.id.tv_month_total)
+        tvMonthHours   = findViewById(R.id.tv_month_hours)
+        calendarTable  = findViewById(R.id.calendar_table)
         tvSelectedDate = findViewById(R.id.tv_selected_date)
-        tvDayTotal = findViewById(R.id.tv_day_total)
-        tvDayStatus = findViewById(R.id.tv_day_status)
-        etHourlyRate = findViewById(R.id.et_hourly_rate)
-        etHours = findViewById(R.id.et_hours)
-        etDailyRate = findViewById(R.id.et_daily_rate)
-        llHourly = findViewById(R.id.ll_hourly)
-        llDaily = findViewById(R.id.ll_daily)
-        cbHoliday = findViewById(R.id.cb_holiday)
-        btnSave = findViewById(R.id.btn_save)
-        btnDelete = findViewById(R.id.btn_delete)
-        btnPrevMonth = findViewById(R.id.btn_prev_month)
-        btnNextMonth = findViewById(R.id.btn_next_month)
-        btnModeHourly = findViewById(R.id.btn_mode_hourly)
-        btnModeDaily = findViewById(R.id.btn_mode_daily)
-        lvRecords = findViewById(R.id.lv_records)
+        tvDayTotal     = findViewById(R.id.tv_day_total)
+        tvDayStatus    = findViewById(R.id.tv_day_status)
+        etHourlyRate   = findViewById(R.id.et_hourly_rate)
+        etHours        = findViewById(R.id.et_hours)
+        etDailyRate    = findViewById(R.id.et_daily_rate)
+        etBonus        = findViewById(R.id.et_bonus)
+        llHourly       = findViewById(R.id.ll_hourly)
+        llDaily        = findViewById(R.id.ll_daily)
+        btnSave        = findViewById(R.id.btn_save)
+        btnDelete      = findViewById(R.id.btn_delete)
+        btnPrevMonth   = findViewById(R.id.btn_prev_month)
+        btnNextMonth   = findViewById(R.id.btn_next_month)
+        btnModeHourly  = findViewById(R.id.btn_mode_hourly)
+        btnModeDaily   = findViewById(R.id.btn_mode_daily)
+        lvRecords      = findViewById(R.id.lv_records)
 
         btnPrevMonth.setOnClickListener {
             if (--currentMonth == 0) { currentMonth = 12; currentYear-- }
@@ -121,28 +120,35 @@ class MainActivity : AppCompatActivity() {
         selCal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
         tvSelectedDate.text = dayDisplayFormat.format(selCal.time)
 
+        // 自动判断节假日/周末
         isHoliday = ds.isHoliday(selectedDate)
         val dow = selCal.get(Calendar.DAY_OF_WEEK)
         isWeekend = dow == Calendar.SATURDAY || dow == Calendar.SUNDAY
 
         val record = ds.getRecord(selectedDate)
         if (record != null) {
+            // 有记录，读取保存的值
             useDailyMode = record.dailyRate > 0
             tvDayTotal.text = "¥${String.format("%.2f", record.total)}"
             tvDayStatus.text = typeLabel(record.isHoliday, record.isWeekend)
             etHourlyRate.setText(String.format("%.1f", record.hourlyRate))
             etHours.setText(String.format("%.1f", record.hours))
-            etDailyRate.setText(String.format("%.1f", record.dailyRate))
-            cbHoliday.isChecked = record.isHoliday
+            etDailyRate.setText(if (record.dailyRate > 0) String.format("%.1f", record.dailyRate) else "")
+            etBonus.setText(if (record.bonus > 0) String.format("%.1f", record.bonus) else "")
             btnDelete.visibility = View.VISIBLE
         } else {
+            // 无记录 → 自动套用预设时薪
             tvDayTotal.text = "¥0.00"
             tvDayStatus.text = typeLabel(isHoliday, isWeekend)
-            val autoRate = if (isHoliday) settings.holidayHourlyRate else settings.normalHourlyRate
+            val autoRate = when {
+                isHoliday -> settings.holidayHourlyRate
+                isWeekend  -> settings.weekendHourlyRate
+                else       -> settings.normalHourlyRate
+            }
             etHourlyRate.setText(String.format("%.1f", autoRate))
             etHours.setText("")
-            etDailyRate.setText("0")
-            cbHoliday.isChecked = isHoliday
+            etDailyRate.setText("")
+            etBonus.setText("")
             btnDelete.visibility = View.GONE
         }
 
@@ -179,7 +185,7 @@ class MainActivity : AppCompatActivity() {
         calendarTable.removeAllViews()
 
         val cal = Calendar.getInstance().apply { set(currentYear, currentMonth - 1, 1) }
-        val firstDow = cal.get(Calendar.DAY_OF_WEEK) // 1=周日
+        val firstDow = cal.get(Calendar.DAY_OF_WEEK)
         val startOffset = if (firstDow == Calendar.SUNDAY) 6 else firstDow - 2
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
@@ -258,19 +264,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveRecord() {
+        val bonus = etBonus.text.toString().toDoubleOrNull() ?: 0.0
         if (!useDailyMode) {
             val rate = etHourlyRate.text.toString().toDoubleOrNull()
             val hours = etHours.text.toString().toDoubleOrNull() ?: 0.0
             if (rate == null) { Toast.makeText(this, "请填写时薪", Toast.LENGTH_SHORT).show(); return }
-            if (rate < 0 || hours < 0) { Toast.makeText(this, "数值不能为负", Toast.LENGTH_SHORT).show(); return }
-            ds.saveRecord(SalaryRecord.fromForm(selectedDate, rate, hours, 0.0, cbHoliday.isChecked, isWeekend, ""))
+            if (rate < 0 || hours < 0 || bonus < 0) {
+                Toast.makeText(this, "数值不能为负", Toast.LENGTH_SHORT).show(); return
+            }
+            val total = rate * hours + bonus
+            tvDayTotal.text = "¥${String.format("%.2f", total)}"
+            ds.saveRecord(
+                SalaryRecord.fromForm(selectedDate, rate, hours, 0.0, isHoliday, isWeekend, bonus, "")
+            )
         } else {
             val daily = etDailyRate.text.toString().toDoubleOrNull() ?: 0.0
-            if (daily <= 0) { Toast.makeText(this, "请填写日薪", Toast.LENGTH_SHORT).show(); return }
-            ds.saveRecord(SalaryRecord.fromForm(selectedDate, 0.0, 0.0, daily, cbHoliday.isChecked, isWeekend, ""))
+            if (daily < 0) { Toast.makeText(this, "日薪不能为负", Toast.LENGTH_SHORT).show(); return }
+            val total = daily + bonus
+            tvDayTotal.text = "¥${String.format("%.2f", total)}"
+            ds.saveRecord(
+                SalaryRecord.fromForm(selectedDate, 0.0, 0.0, daily, isHoliday, isWeekend, bonus, "")
+            )
         }
         Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
-        updateAll()
+        buildCalendar()
+        lvRecords.adapter = RecordAdapter(ds.getRecordsForMonth(currentYear, currentMonth))
     }
 
     private fun deleteRecord() {
@@ -296,18 +314,18 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
 
         val etNormal = dialog.findViewById<EditText>(R.id.et_normal_rate)!!
-        val etDaily  = dialog.findViewById<EditText>(R.id.et_daily_rate)!!
         val etHol    = dialog.findViewById<EditText>(R.id.et_holiday_rate)!!
+        val etWeekend = dialog.findViewById<EditText>(R.id.et_weekend_rate)!!
         val etHols   = dialog.findViewById<EditText>(R.id.et_holidays)!!
         dialog.findViewById<Button>(R.id.btn_save)!!.setOnClickListener {
-            val n = etNormal.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val d = etDaily.text.toString().toDoubleOrNull() ?: 0.0
-            val h = etHol.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val n  = etNormal.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val h  = etHol.text.toString().toDoubleOrNull() ?: return@setOnClickListener
+            val w  = etWeekend.text.toString().toDoubleOrNull() ?: return@setOnClickListener
             val holSet = etHols.text.toString().split("\n")
                 .map { it.trim() }
                 .filter { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }
                 .toSet()
-            ds.saveSettings(SalarySettings(n, d, h, holSet))
+            ds.saveSettings(SalarySettings(n, h, w, holSet))
             Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
             updateAll()
             dialog.dismiss()
@@ -316,8 +334,8 @@ class MainActivity : AppCompatActivity() {
 
         val s = ds.loadSettings()
         etNormal.setText(String.format("%.1f", s.normalHourlyRate))
-        etDaily.setText(String.format("%.1f", s.overtimeDailyRate))
         etHol.setText(String.format("%.1f", s.holidayHourlyRate))
+        etWeekend.setText(String.format("%.1f", s.weekendHourlyRate))
         etHols.setText(s.customHolidays.joinToString("\n"))
     }
 
@@ -330,9 +348,13 @@ class MainActivity : AppCompatActivity() {
             val r = records[pos]
             val dayNum = r.date.substring(8, 10).toInt().toString() + "日"
             v.findViewById<TextView>(R.id.tv_day).text = dayNum
-            v.findViewById<TextView>(R.id.tv_hours).text = "${r.hours}h"
-            v.findViewById<TextView>(R.id.tv_rate).text = if (r.dailyRate > 0) "固定" else "${r.hourlyRate}/h"
-            v.findViewById<TextView>(R.id.tv_total).text = "¥${String.format("%.2f", r.total)}"
+            v.findViewById<TextView>(R.id.tv_hours).text =
+                if (r.dailyRate > 0) "-" else "${r.hours}h"
+            v.findViewById<TextView>(R.id.tv_rate).text =
+                if (r.dailyRate > 0) "固定" else "${r.hourlyRate}/h"
+            val bonusStr = if (r.bonus > 0) "+¥${String.format("%.0f", r.bonus)}" else ""
+            v.findViewById<TextView>(R.id.tv_total).text =
+                "¥${String.format("%.2f", r.total)}$bonusStr"
             val flag = v.findViewById<TextView>(R.id.tv_flag)
             val (text, color) = when {
                 r.isHoliday -> "节假日" to getColor(this@MainActivity, R.color.holiday_color)
