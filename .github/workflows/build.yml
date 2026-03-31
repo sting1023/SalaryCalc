@@ -22,32 +22,23 @@ jobs:
       - name: Install Android SDK components
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -3
 
-      - name: Cache Gradle
-        uses: actions/cache@v3
-        with:
-          path: ~/.gradle/caches
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-
-
-      - name: Build APK
-        run: bash gradlew assembleDebug --no-daemon 2>&1 | tee build.log
-        continue-on-error: true
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log-${{ github.run_id }}
-          path: build.log
-          retention-days: 1
+      - name: Build debug APK
+        run: |
+          pwd
+          ls -la
+          bash gradlew assembleDebug --no-daemon
+          echo "--- Build result ---"
+          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "APK dir not found"
 
       - name: Upload APK
         if: success()
+        run: |
+          echo "Uploading APK..."
+          ls -la app/build/outputs/apk/debug/ || echo "No APK dir"
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-${{ github.run_id }}
-          path: app/build/outputs/apk/debug/
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
