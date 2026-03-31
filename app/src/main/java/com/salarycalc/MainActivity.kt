@@ -3,6 +3,8 @@ package com.salarycalc
 import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -26,11 +28,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvDayTotal: TextView
     private lateinit var tvDayStatus: TextView
     private lateinit var etHourlyRate: EditText
+    private lateinit var etMultiplier: EditText
     private lateinit var etHours: EditText
     private lateinit var etDailyRate: EditText
     private lateinit var etBonus: EditText
+    private lateinit var tvHourlySubtotal: TextView
+    private lateinit var tvMultiplierHint: TextView
     private lateinit var llHourly: LinearLayout
     private lateinit var llDaily: LinearLayout
+    private lateinit var llMultiplier: LinearLayout
     private lateinit var btnSave: Button
     private lateinit var btnDelete: Button
     private lateinit var btnPrevMonth: ImageButton
@@ -42,7 +48,6 @@ class MainActivity : AppCompatActivity() {
     private var currentYear = 0
     private var currentMonth = 0
     private var selectedDate = ""
-    private var isLegalHoliday = false
     private var isHoliday = false
     private var isWeekend = false
     private var useDailyMode = false
@@ -62,30 +67,35 @@ class MainActivity : AppCompatActivity() {
         selectedDate = dateFormat.format(now.time)
 
         initViews()
+        setupTextWatchers()
         updateAll()
     }
 
     private fun initViews() {
-        tvYearMonth    = findViewById(R.id.tv_year_month)
-        tvMonthTotal   = findViewById(R.id.tv_month_total)
-        tvMonthHours   = findViewById(R.id.tv_month_hours)
-        calendarTable  = findViewById(R.id.calendar_table)
-        tvSelectedDate = findViewById(R.id.tv_selected_date)
-        tvDayTotal     = findViewById(R.id.tv_day_total)
-        tvDayStatus    = findViewById(R.id.tv_day_status)
-        etHourlyRate   = findViewById(R.id.et_hourly_rate)
-        etHours        = findViewById(R.id.et_hours)
-        etDailyRate    = findViewById(R.id.et_daily_rate)
-        etBonus        = findViewById(R.id.et_bonus)
-        llHourly       = findViewById(R.id.ll_hourly)
-        llDaily        = findViewById(R.id.ll_daily)
-        btnSave        = findViewById(R.id.btn_save)
-        btnDelete      = findViewById(R.id.btn_delete)
-        btnPrevMonth   = findViewById(R.id.btn_prev_month)
-        btnNextMonth   = findViewById(R.id.btn_next_month)
-        btnModeHourly  = findViewById(R.id.btn_mode_hourly)
-        btnModeDaily   = findViewById(R.id.btn_mode_daily)
-        lvRecords      = findViewById(R.id.lv_records)
+        tvYearMonth     = findViewById(R.id.tv_year_month)
+        tvMonthTotal    = findViewById(R.id.tv_month_total)
+        tvMonthHours    = findViewById(R.id.tv_month_hours)
+        calendarTable   = findViewById(R.id.calendar_table)
+        tvSelectedDate  = findViewById(R.id.tv_selected_date)
+        tvDayTotal      = findViewById(R.id.tv_day_total)
+        tvDayStatus     = findViewById(R.id.tv_day_status)
+        etHourlyRate    = findViewById(R.id.et_hourly_rate)
+        etMultiplier    = findViewById(R.id.et_multiplier)
+        etHours         = findViewById(R.id.et_hours)
+        etDailyRate     = findViewById(R.id.et_daily_rate)
+        etBonus         = findViewById(R.id.et_bonus)
+        tvHourlySubtotal = findViewById(R.id.tv_hourly_subtotal)
+        tvMultiplierHint = findViewById(R.id.tv_multiplier_hint)
+        llHourly        = findViewById(R.id.ll_hourly)
+        llDaily         = findViewById(R.id.ll_daily)
+        llMultiplier     = findViewById(R.id.ll_multiplier)
+        btnSave          = findViewById(R.id.btn_save)
+        btnDelete        = findViewById(R.id.btn_delete)
+        btnPrevMonth     = findViewById(R.id.btn_prev_month)
+        btnNextMonth     = findViewById(R.id.btn_next_month)
+        btnModeHourly    = findViewById(R.id.btn_mode_hourly)
+        btnModeDaily     = findViewById(R.id.btn_mode_daily)
+        lvRecords        = findViewById(R.id.lv_records)
 
         btnPrevMonth.setOnClickListener {
             if (--currentMonth == 0) { currentMonth = 12; currentYear-- }
@@ -106,6 +116,33 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_settings).setOnClickListener { showSettings() }
     }
 
+    /** 监听时薪/倍率/小时数/奖金变化，实时更新小计 */
+    private fun setupTextWatchers() {
+        val watcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, s1: Int, s2: Int, s3: Int) {}
+            override fun onTextChanged(s: CharSequence?, s1: Int, s2: Int, s3: Int) {}
+            override fun afterTextChanged(s: Editable?) { recalcSubtotal() }
+        }
+        etMultiplier.addTextChangedListener(watcher)
+        etHourlyRate.addTextChangedListener(watcher)
+        etHours.addTextChangedListener(watcher)
+        etBonus.addTextChangedListener(watcher)
+    }
+
+    /** 实时重新计算小计并更新显示 */
+    private fun recalcSubtotal() {
+        val rate = etHourlyRate.text.toString().toDoubleOrNull() ?: 0.0
+        val mult = etMultiplier.text.toString().toDoubleOrNull() ?: 1.0
+        val hours = etHours.text.toString().toDoubleOrNull() ?: 0.0
+        val bonus = etBonus.text.toString().toDoubleOrNull() ?: 0.0
+        if (!useDailyMode) {
+            val subtotal = rate * mult * hours
+            val total = subtotal + bonus
+            tvHourlySubtotal.text = "¥${String.format("%.2f", subtotal)}"
+            tvDayTotal.text = "¥${String.format("%.2f", total)}"
+        }
+    }
+
     private fun updateAll() {
         settings = ds.loadSettings()
 
@@ -121,66 +158,60 @@ class MainActivity : AppCompatActivity() {
         selCal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
         tvSelectedDate.text = dayDisplayFormat.format(selCal.time)
 
-        // 自动判断节假日类型（优先级：法定节假日 > 普通节假日 > 周末）
-        isLegalHoliday = ds.isLegalHoliday(selectedDate)
-        isHoliday = !isLegalHoliday && ds.isHoliday(selectedDate)
         val dow = selCal.get(Calendar.DAY_OF_WEEK)
-        isWeekend = !isLegalHoliday && !isHoliday && (dow == Calendar.SATURDAY || dow == Calendar.SUNDAY)
+        isWeekend = dow == Calendar.SATURDAY || dow == Calendar.SUNDAY
+        isHoliday = false  // 自定义节假日概念暂时去掉
 
         val record = ds.getRecord(selectedDate)
         if (record != null) {
             // 有记录 → 读保存的值
             useDailyMode = record.dailyRate > 0
             tvDayTotal.text = "¥${String.format("%.2f", record.total)}"
-            tvDayStatus.text = typeLabel(record.isLegalHoliday, record.isHoliday, record.isWeekend)
-            etHourlyRate.setText(String.format("%.1f", record.hourlyRate))
+            tvDayStatus.text = typeLabel(record.isHoliday, record.isWeekend)
+            etHourlyRate.setText(String.format("%.2f", record.hourlyRate))
+            etMultiplier.setText(String.format("%.1f", record.multiplier))
             etHours.setText(String.format("%.1f", record.hours))
             etDailyRate.setText(if (record.dailyRate > 0) String.format("%.1f", record.dailyRate) else "")
             etBonus.setText(if (record.bonus > 0) String.format("%.1f", record.bonus) else "")
+            updateMultiplierHint(record.multiplier, record.isWeekend)
             btnDelete.visibility = View.VISIBLE
         } else {
-            // 无记录 → 自动套用倍率
+            // 无记录 → 自动填默认值
+            useDailyMode = false
             tvDayTotal.text = "¥0.00"
-            tvDayStatus.text = typeLabel(isLegalHoliday, isHoliday, isWeekend)
-            val autoRate = calcAutoRate(isLegalHoliday, isHoliday, isWeekend)
-            etHourlyRate.setText(String.format("%.1f", autoRate))
+            tvDayStatus.text = typeLabel(isHoliday, isWeekend)
+            val baseRate = settings.normalHourlyRate
+            val autoMult = if (isWeekend) 2.0 else 1.0
+            etHourlyRate.setText(String.format("%.2f", baseRate))
+            etMultiplier.setText(String.format("%.1f", autoMult))
             etHours.setText("")
             etDailyRate.setText("")
             etBonus.setText("")
+            updateMultiplierHint(autoMult, isWeekend)
             btnDelete.visibility = View.GONE
         }
 
         applyModeUI()
+        recalcSubtotal()
         buildCalendar()
         lvRecords.adapter = RecordAdapter(ds.getRecordsForMonth(currentYear, currentMonth))
     }
 
-    /**
-     * 根据日期类型计算预设时薪
-     * 法定节假日 > 普通节假日 > 周末 > 工作日
-     */
-    private fun calcAutoRate(legalHol: Boolean, hol: Boolean, wknd: Boolean): Double {
-        val base = settings.normalHourlyRate
-        return when {
-            legalHol -> base * settings.legalHolidayMultiplier
-            hol      -> base * settings.holidayMultiplier
-            wknd     -> base * settings.weekendMultiplier
-            else     -> base
-        }
+    private fun updateMultiplierHint(mult: Double, weekend: Boolean) {
+        tvMultiplierHint.text = if (weekend) "(周末自动2倍，可修改)" else "(工作日1倍，可修改)"
     }
 
-    /** 状态标签文字，优先级：法定节假日 > 普通节假日 > 周末 > 工作日 */
-    private fun typeLabel(legalHol: Boolean, hol: Boolean, wknd: Boolean) = when {
-        legalHol -> "法定节假日"
-        hol      -> "节假日"
-        wknd     -> "周末"
-        else     -> "工作日"
+    private fun typeLabel(holiday: Boolean, weekend: Boolean) = when {
+        holiday -> "节假日"
+        weekend -> "周末"
+        else -> "工作日"
     }
 
     private fun applyModeUI() {
         if (useDailyMode) {
             llHourly.visibility = View.GONE
             llDaily.visibility = View.VISIBLE
+            llMultiplier.visibility = View.GONE
             btnModeHourly.setBackgroundColor(Color.parseColor("#E0E0E0"))
             btnModeHourly.setTextColor(Color.parseColor("#888888"))
             btnModeDaily.setBackgroundColor(getColor(this, R.color.primary))
@@ -188,6 +219,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             llHourly.visibility = View.VISIBLE
             llDaily.visibility = View.GONE
+            llMultiplier.visibility = View.VISIBLE
             btnModeHourly.setBackgroundColor(getColor(this, R.color.primary))
             btnModeHourly.setTextColor(Color.WHITE)
             btnModeDaily.setBackgroundColor(Color.parseColor("#E0E0E0"))
@@ -222,9 +254,8 @@ class MainActivity : AppCompatActivity() {
 
                 if (day < 1 || day > daysInMonth) {
                     val spacer = Space(this)
-                    val lp = TableRow.LayoutParams(0,
+                    spacer.layoutParams = TableRow.LayoutParams(0,
                         resources.getDimensionPixelSize(R.dimen.day_cell_height), 1f)
-                    spacer.layoutParams = lp
                     tableRow.addView(spacer)
                 } else {
                     cal.set(currentYear, currentMonth - 1, day)
@@ -235,9 +266,6 @@ class MainActivity : AppCompatActivity() {
                     val isSelected = dayStr == selectedDate
                     val isToday = isCurrentMonth && day == todayCal.get(Calendar.DAY_OF_MONTH)
                     val hasRecord = recordMap.containsKey(dayStr)
-                    val isHol     = ds.isHoliday(dayStr)
-                    val isLglHol  = ds.isLegalHoliday(dayStr)
-                    val isWknd    = !isLglHol && !isHol && (isSat || isSun)
 
                     val label = if (hasRecord) "$day\n●" else day.toString()
                     val tv = TextView(this).apply {
@@ -245,13 +273,10 @@ class MainActivity : AppCompatActivity() {
                         gravity = Gravity.CENTER
                         textSize = 13f
                         setLineSpacing(0f, 1.1f)
-                        val lp2 = TableRow.LayoutParams(0,
+                        layoutParams = TableRow.LayoutParams(0,
                             resources.getDimensionPixelSize(R.dimen.day_cell_height), 1f)
-                        layoutParams = lp2
 
-                        val cellTypeColor = when {
-                            isLglHol -> getColor(context, R.color.legal_holiday_color)
-                            isHol    -> getColor(context, R.color.holiday_color)
+                        val cellColor = when {
                             isSat || isSun -> getColor(context, R.color.weekend_color)
                             else -> Color.parseColor("#333333")
                         }
@@ -266,7 +291,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             else -> {
                                 setBackgroundColor(Color.TRANSPARENT)
-                                setTextColor(cellTypeColor)
+                                setTextColor(cellColor)
                             }
                         }
                         setOnClickListener {
@@ -282,34 +307,42 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveRecord() {
+        val rate = etHourlyRate.text.toString().toDoubleOrNull()
+        val mult = etMultiplier.text.toString().toDoubleOrNull()
+        val hours = etHours.text.toString().toDoubleOrNull() ?: 0.0
+        val daily = etDailyRate.text.toString().toDoubleOrNull() ?: 0.0
         val bonus = etBonus.text.toString().toDoubleOrNull() ?: 0.0
+
+        // 防崩溃：倍率不能为空或≤0，默认1
+        val safeMult = if (mult == null || mult <= 0) 1.0 else mult
         if (!useDailyMode) {
-            val rate = etHourlyRate.text.toString().toDoubleOrNull()
-            val hours = etHours.text.toString().toDoubleOrNull() ?: 0.0
-            if (rate == null) { Toast.makeText(this, "请填写时薪", Toast.LENGTH_SHORT).show(); return }
+            if (rate == null) {
+                Toast.makeText(this, "请填写时薪", Toast.LENGTH_SHORT).show(); return
+            }
             if (rate < 0 || hours < 0 || bonus < 0) {
                 Toast.makeText(this, "数值不能为负", Toast.LENGTH_SHORT).show(); return
             }
-            val total = rate * hours + bonus
-            tvDayTotal.text = "¥${String.format("%.2f", total)}"
-            ds.saveRecord(
-                SalaryRecord.fromForm(
-                    selectedDate, rate, hours, 0.0,
-                    isLegalHoliday, isHoliday, isWeekend, bonus, ""
-                )
-            )
         } else {
-            val daily = etDailyRate.text.toString().toDoubleOrNull() ?: 0.0
-            if (daily < 0) { Toast.makeText(this, "日薪不能为负", Toast.LENGTH_SHORT).show(); return }
-            val total = daily + bonus
-            tvDayTotal.text = "¥${String.format("%.2f", total)}"
-            ds.saveRecord(
-                SalaryRecord.fromForm(
-                    selectedDate, 0.0, 0.0, daily,
-                    isLegalHoliday, isHoliday, isWeekend, bonus, ""
-                )
-            )
+            if (daily < 0) {
+                Toast.makeText(this, "日薪不能为负", Toast.LENGTH_SHORT).show(); return
+            }
         }
+
+        if (!useDailyMode) {
+            val subtotal = rate!! * safeMult * hours
+            tvDayTotal.text = "¥${String.format("%.2f", subtotal + bonus)}"
+        } else {
+            tvDayTotal.text = "¥${String.format("%.2f", daily + bonus)}"
+        }
+
+        ds.saveRecord(
+            SalaryRecord.fromForm(
+                selectedDate,
+                rate ?: 0.0, safeMult, hours,
+                if (useDailyMode) daily else 0.0,
+                isHoliday, isWeekend, bonus, ""
+            )
+        )
         Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
         buildCalendar()
         lvRecords.adapter = RecordAdapter(ds.getRecordsForMonth(currentYear, currentMonth))
@@ -337,23 +370,17 @@ class MainActivity : AppCompatActivity() {
         )
         dialog.show()
 
-        val etNormal   = dialog.findViewById<EditText>(R.id.et_normal_rate)!!
-        val etWkndMult = dialog.findViewById<EditText>(R.id.et_weekend_multiplier)!!
-        val etHolMult  = dialog.findViewById<EditText>(R.id.et_holiday_multiplier)!!
-        val etLglMult  = dialog.findViewById<EditText>(R.id.et_legal_holiday_multiplier)!!
-        val etHol      = dialog.findViewById<EditText>(R.id.et_holidays)!!
-        val etLglHol   = dialog.findViewById<EditText>(R.id.et_legal_holidays)!!
+        val etNormalRate = dialog.findViewById<EditText>(R.id.et_normal_rate)!!
+        val etDailyRate  = dialog.findViewById<EditText>(R.id.et_daily_rate)!!
 
         dialog.findViewById<Button>(R.id.btn_save)!!.setOnClickListener {
-            val n   = etNormal.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val wm  = etWkndMult.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val hm  = etHolMult.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val lhm = etLglMult.text.toString().toDoubleOrNull() ?: return@setOnClickListener
-            val holSet = etHol.text.toString().split("\n")
-                .map { it.trim() }.filter { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }.toSet()
-            val lglSet = etLglHol.text.toString().split("\n")
-                .map { it.trim() }.filter { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }.toSet()
-            ds.saveSettings(SalarySettings(n, wm, hm, lhm, holSet, lglSet))
+            val normalRate = etNormalRate.text.toString().toDoubleOrNull()
+            if (normalRate == null || normalRate <= 0) {
+                Toast.makeText(this, "请填写有效的基本时薪", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val dailyRate = etDailyRate.text.toString().toDoubleOrNull() ?: 0.0
+            ds.saveSettings(SalarySettings(normalRate, dailyRate))
             Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
             updateAll()
             dialog.dismiss()
@@ -361,12 +388,8 @@ class MainActivity : AppCompatActivity() {
         dialog.findViewById<Button>(R.id.btn_cancel)!!.setOnClickListener { dialog.dismiss() }
 
         val s = ds.loadSettings()
-        etNormal.text.clear();   etNormal.text.append(String.format("%.1f", s.normalHourlyRate))
-        etWkndMult.text.clear(); etWkndMult.text.append(String.format("%.1f", s.weekendMultiplier))
-        etHolMult.text.clear();  etHolMult.text.append(String.format("%.1f", s.holidayMultiplier))
-        etLglMult.text.clear();  etLglMult.text.append(String.format("%.1f", s.legalHolidayMultiplier))
-        etHol.text.clear();     etHol.text.append(s.customHolidays.joinToString("\n"))
-        etLglHol.text.clear();  etLglHol.text.append(s.legalHolidayDates.joinToString("\n"))
+        etNormalRate.setText(String.format("%.2f", s.normalHourlyRate))
+        etDailyRate.setText(if (s.normalDailyRate > 0) String.format("%.1f", s.normalDailyRate) else "")
     }
 
     inner class RecordAdapter(private val records: List<SalaryRecord>) : BaseAdapter() {
@@ -376,18 +399,16 @@ class MainActivity : AppCompatActivity() {
         override fun getView(pos: Int, convertView: View?, parent: ViewGroup?): View {
             val v = convertView ?: layoutInflater.inflate(R.layout.item_record, parent, false)
             val r = records[pos]
-            val dayNum = r.date.substring(8, 10).toInt().toString() + "日"
-            v.findViewById<TextView>(R.id.tv_day).text = dayNum
+            v.findViewById<TextView>(R.id.tv_day).text = r.date.substring(8, 10).toInt().toString() + "日"
             v.findViewById<TextView>(R.id.tv_hours).text =
                 if (r.dailyRate > 0) "-" else "${r.hours}h"
+            val multStr = if (r.multiplier != 1.0) "×${String.format("%.1f", r.multiplier)}" else ""
             v.findViewById<TextView>(R.id.tv_rate).text =
-                if (r.dailyRate > 0) "固定" else "${r.hourlyRate}/h"
+                if (r.dailyRate > 0) "固定" else "${r.hourlyRate}/h$multStr"
             val bonusStr = if (r.bonus > 0) "+¥${String.format("%.0f", r.bonus)}" else ""
-            v.findViewById<TextView>(R.id.tv_total).text =
-                "¥${String.format("%.2f", r.total)}$bonusStr"
+            v.findViewById<TextView>(R.id.tv_total).text = "¥${String.format("%.2f", r.total)}$bonusStr"
             val flag = v.findViewById<TextView>(R.id.tv_flag)
             val (text, color) = when {
-                r.isLegalHoliday -> "法定节假日" to getColor(this@MainActivity, R.color.legal_holiday_color)
                 r.isHoliday -> "节假日" to getColor(this@MainActivity, R.color.holiday_color)
                 r.isWeekend -> "周末" to getColor(this@MainActivity, R.color.weekend_color)
                 else -> "工作" to getColor(this@MainActivity, R.color.workday_color)
