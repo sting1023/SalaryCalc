@@ -23,6 +23,7 @@ android {
             storePassword = "salary123"
             keyAlias = "salarycalc"
             keyPassword = "salary123"
+            storeType = "PKCS12"
         }
     }
 
