@@ -28,8 +28,9 @@ android {
     }
 
     buildTypes {
+        // debug 不签名，构建 unsigned APK，本地统一用 jarsigner 签名
         debug {
-            signingConfig = signingConfigs["salarycalc"]
+            // signingConfig 暂时禁用，避免双重签名
         }
         release {
             signingConfig = signingConfigs["salarycalc"]
