@@ -20,8 +20,8 @@ class DataStore(private val ctx: Context) {
         val holidays = (0 until holidaysArray.length()).map { holidaysArray.getString(it) }.toSet()
         return SalarySettings(
             normalHourlyRate = obj.optDouble("normalHourlyRate", 20.0),
-            overtimeDailyRate = obj.optDouble("overtimeDailyRate", 0.0),
             holidayHourlyRate = obj.optDouble("holidayHourlyRate", 50.0),
+            weekendHourlyRate = obj.optDouble("weekendHourlyRate", 30.0),
             customHolidays = holidays
         )
     }
@@ -29,8 +29,8 @@ class DataStore(private val ctx: Context) {
     fun saveSettings(settings: SalarySettings) {
         val obj = JSONObject().apply {
             put("normalHourlyRate", settings.normalHourlyRate)
-            put("overtimeDailyRate", settings.overtimeDailyRate)
             put("holidayHourlyRate", settings.holidayHourlyRate)
+            put("weekendHourlyRate", settings.weekendHourlyRate)
             put("customHolidays", JSONArray(settings.customHolidays.toList()))
         }
         prefs.edit().putString("settings", obj.toString()).apply()
@@ -52,6 +52,7 @@ class DataStore(private val ctx: Context) {
             dailyRate = r.optDouble("dailyRate", 0.0),
             isHoliday = r.optBoolean("isHoliday", false),
             isWeekend = r.optBoolean("isWeekend", false),
+            bonus = r.optDouble("bonus", 0.0),
             note = r.optString("note", "")
         )
     }
@@ -69,6 +70,7 @@ class DataStore(private val ctx: Context) {
             put("dailyRate", record.dailyRate)
             put("isHoliday", record.isHoliday)
             put("isWeekend", record.isWeekend)
+            put("bonus", record.bonus)
             put("note", record.note)
         })
         prefs.edit().putString(key, obj.toString()).apply()
@@ -90,7 +92,6 @@ class DataStore(private val ctx: Context) {
         val json = prefs.getString(key, null) ?: return emptyList()
         val obj = JSONObject(json)
         val list = mutableListOf<SalaryRecord>()
-        val settings = loadSettings()
         obj.keys().forEach { date ->
             val r = obj.getJSONObject(date)
             list.add(SalaryRecord(
@@ -100,6 +101,7 @@ class DataStore(private val ctx: Context) {
                 dailyRate = r.optDouble("dailyRate", 0.0),
                 isHoliday = r.optBoolean("isHoliday", false),
                 isWeekend = r.optBoolean("isWeekend", false),
+                bonus = r.optDouble("bonus", 0.0),
                 note = r.optString("note", "")
             ))
         }
