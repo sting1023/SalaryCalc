@@ -20,10 +20,10 @@
             android:layout_marginBottom="14dp"/>
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="加班日薪（设为 >0 则启用整日固定工资模式）" android:textSize="13sp" android:textColor="#666"/>
-        <EditText android:id="@+id/et_daily_rate"
+            android:text="周末时薪（元/小时）" android:textSize="13sp" android:textColor="#666"/>
+        <EditText android:id="@+id/et_weekend_rate"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:inputType="numberDecimal" android:hint="例: 200（设为0则使用时薪模式）" android:textSize="16sp"
+            android:inputType="numberDecimal" android:hint="例: 30" android:textSize="16sp"
             android:layout_marginBottom="14dp"/>
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
