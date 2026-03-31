@@ -232,7 +232,7 @@
                 <View android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"/>
             </LinearLayout>
 
-            <!-- 节假日 + 备注 -->
+            <!-- 额外收入 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -240,13 +240,18 @@
                 android:layout_marginTop="8dp"
                 android:gravity="center_vertical">
 
-                <CheckBox android:id="@+id/cb_holiday"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="节假日"
-                    android:textSize="15sp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="额外/奖金收入" android:textSize="12sp" android:textColor="#888"/>
 
-                <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+                <EditText android:id="@+id/et_bonus"
+                    android:layout_width="100dp" android:layout_height="44dp"
+                    android:layout_marginStart="8dp"
+                    android:inputType="numberDecimal" android:hint="0"
+                    android:textSize="16sp" android:gravity="center"
+                    android:background="@drawable/edit_bg"/>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="元" android:textSize="14sp" android:textColor="#888" android:layout_marginStart="4dp"/>
 
                 <Button
                     android:id="@+id/btn_delete"
@@ -262,7 +267,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="保存"
-                    android:paddingHorizontal="20dp"/>
+                    android:paddingHorizontal="20dp"
+                    android:layout_marginStart="8dp"/>
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
