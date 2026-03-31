@@ -71,33 +71,63 @@
             android:layout_marginTop="2dp"/>
     </LinearLayout>
 
-    <!-- ====== 日历 ====== -->
+    <!-- ====== 日历（缩小） + 记录列表（扩大） ====== -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@color/white"
-        android:padding="8dp">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
 
+        <!-- 日历：占 1/4 -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="32dp"
-            android:orientation="horizontal">
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="一" android:textSize="13sp" android:textColor="#EF5350"/>
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="二" android:textSize="13sp" android:textColor="#333"/>
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="三" android:textSize="13sp" android:textColor="#333"/>
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="四" android:textSize="13sp" android:textColor="#333"/>
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="五" android:textSize="13sp" android:textColor="#333"/>
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="六" android:textSize="13sp" android:textColor="#FF9800"/>
-            <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="日" android:textSize="13sp" android:textColor="#FF9800"/>
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:background="@color/white"
+            android:padding="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:orientation="horizontal">
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="一" android:textSize="13sp" android:textColor="#EF5350"/>
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="二" android:textSize="13sp" android:textColor="#333"/>
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="三" android:textSize="13sp" android:textColor="#333"/>
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="四" android:textSize="13sp" android:textColor="#333"/>
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="五" android:textSize="13sp" android:textColor="#333"/>
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="六" android:textSize="13sp" android:textColor="#FF9800"/>
+                <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="日" android:textSize="13sp" android:textColor="#FF9800"/>
+            </LinearLayout>
+
+            <TableLayout
+                android:id="@+id/calendar_table"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="4dp"
+                android:stretchColumns="0,1,2,3,4,5,6"/>
         </LinearLayout>
 
-        <TableLayout
-            android:id="@+id/calendar_table"
+        <!-- ====== 月记录列表：占 3/4 ====== -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:stretchColumns="0,1,2,3,4,5,6"/>
+            android:layout_height="0dp"
+            android:layout_weight="3"
+            android:orientation="vertical"
+            android:layout_marginHorizontal="12dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="📋 本月记录" android:textSize="13sp" android:textColor="#888"
+                android:layout_marginTop="4dp" android:layout_marginBottom="4dp"/>
+
+            <ListView android:id="@+id/lv_records"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:divider="#EEE"
+                android:dividerHeight="1dp"/>
+        </LinearLayout>
     </LinearLayout>
 
     <!-- ====== 当天编辑面板 ====== -->
@@ -357,26 +387,6 @@
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
-
-    <!-- ====== 月记录列表 ====== -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginHorizontal="12dp">
-
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="📋 本月记录" android:textSize="13sp" android:textColor="#888"
-            android:layout_marginBottom="4dp"/>
-
-        <ListView android:id="@+id/lv_records"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:divider="#EEE"
-            android:dividerHeight="1dp"/>
-    </LinearLayout>
 
     <!-- ====== 底部设置 ====== -->
     <Button
