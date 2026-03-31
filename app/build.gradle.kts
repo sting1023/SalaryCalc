@@ -18,7 +18,7 @@ android {
     }
 
     signingConfigs {
-        create("release") {
+        create("salarycalc") {
             storeFile = file("salarycalc.keystore")
             storePassword = "salary123"
             keyAlias = "salarycalc"
@@ -29,10 +29,10 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("salarycalc")
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("salarycalc")
         }
     }
 
