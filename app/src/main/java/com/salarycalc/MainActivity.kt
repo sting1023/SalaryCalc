@@ -69,9 +69,6 @@ class MainActivity : AppCompatActivity() {
         initViews()
         setupTextWatchers()
         updateAll()
-
-        // 启动时检查更新（有新版本弹对话框）
-        UpdateChecker.check(this)
     }
 
     private fun initViews() {
