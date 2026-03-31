@@ -29,10 +29,10 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("salarycalc")
+            signingConfig = signingConfigs["salarycalc"]
         }
         release {
-            signingConfig = signingConfigs.getByName("salarycalc")
+            signingConfig = signingConfigs["salarycalc"]
         }
     }
 
