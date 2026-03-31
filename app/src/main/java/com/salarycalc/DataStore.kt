@@ -16,31 +16,38 @@ class DataStore(private val ctx: Context) {
     fun loadSettings(): SalarySettings {
         val json = prefs.getString("settings", null) ?: return SalarySettings()
         val obj = JSONObject(json)
-        val holidaysArray = obj.optJSONArray("customHolidays") ?: JSONArray()
-        val holidays = (0 until holidaysArray.length()).map { holidaysArray.getString(it) }.toSet()
+        val holidays = parseDateSet(obj.optJSONArray("customHolidays"))
+        val legalHolidays = parseDateSet(obj.optJSONArray("legalHolidayDates"))
         return SalarySettings(
             normalHourlyRate = obj.optDouble("normalHourlyRate", 20.0),
-            holidayHourlyRate = obj.optDouble("holidayHourlyRate", 50.0),
-            weekendHourlyRate = obj.optDouble("weekendHourlyRate", 30.0),
-            customHolidays = holidays
+            weekendMultiplier = obj.optDouble("weekendMultiplier", 2.0),
+            holidayMultiplier = obj.optDouble("holidayMultiplier", 2.0),
+            legalHolidayMultiplier = obj.optDouble("legalHolidayMultiplier", 3.0),
+            customHolidays = holidays,
+            legalHolidayDates = legalHolidays
         )
     }
 
     fun saveSettings(settings: SalarySettings) {
         val obj = JSONObject().apply {
             put("normalHourlyRate", settings.normalHourlyRate)
-            put("holidayHourlyRate", settings.holidayHourlyRate)
-            put("weekendHourlyRate", settings.weekendHourlyRate)
+            put("weekendMultiplier", settings.weekendMultiplier)
+            put("holidayMultiplier", settings.holidayMultiplier)
+            put("legalHolidayMultiplier", settings.legalHolidayMultiplier)
             put("customHolidays", JSONArray(settings.customHolidays.toList()))
+            put("legalHolidayDates", JSONArray(settings.legalHolidayDates.toList()))
         }
         prefs.edit().putString("settings", obj.toString()).apply()
     }
 
+    private fun parseDateSet(arr: JSONArray?): Set<String> {
+        if (arr == null) return emptySet()
+        return (0 until arr.length()).map { arr.getString(it) }.toSet()
+    }
+
     fun getRecord(date: String): SalaryRecord? {
         val parts = date.split("-")
-        val year = parts[0].toInt()
-        val month = parts[1].toInt()
-        val key = recordsKey(year, month)
+        val key = recordsKey(parts[0].toInt(), parts[1].toInt())
         val json = prefs.getString(key, null) ?: return null
         val obj = JSONObject(json)
         if (!obj.has(date)) return null
@@ -50,6 +57,7 @@ class DataStore(private val ctx: Context) {
             hourlyRate = r.optDouble("hourlyRate", 0.0),
             hours = r.optDouble("hours", 0.0),
             dailyRate = r.optDouble("dailyRate", 0.0),
+            isLegalHoliday = r.optBoolean("isLegalHoliday", false),
             isHoliday = r.optBoolean("isHoliday", false),
             isWeekend = r.optBoolean("isWeekend", false),
             bonus = r.optDouble("bonus", 0.0),
@@ -59,15 +67,14 @@ class DataStore(private val ctx: Context) {
 
     fun saveRecord(record: SalaryRecord) {
         val parts = record.date.split("-")
-        val year = parts[0].toInt()
-        val month = parts[1].toInt()
-        val key = recordsKey(year, month)
+        val key = recordsKey(parts[0].toInt(), parts[1].toInt())
         val json = prefs.getString(key, null) ?: "{}"
         val obj = JSONObject(json)
         obj.put(record.date, JSONObject().apply {
             put("hourlyRate", record.hourlyRate)
             put("hours", record.hours)
             put("dailyRate", record.dailyRate)
+            put("isLegalHoliday", record.isLegalHoliday)
             put("isHoliday", record.isHoliday)
             put("isWeekend", record.isWeekend)
             put("bonus", record.bonus)
@@ -78,9 +85,7 @@ class DataStore(private val ctx: Context) {
 
     fun deleteRecord(date: String) {
         val parts = date.split("-")
-        val year = parts[0].toInt()
-        val month = parts[1].toInt()
-        val key = recordsKey(year, month)
+        val key = recordsKey(parts[0].toInt(), parts[1].toInt())
         val json = prefs.getString(key, null) ?: return
         val obj = JSONObject(json)
         obj.remove(date)
@@ -99,6 +104,7 @@ class DataStore(private val ctx: Context) {
                 hourlyRate = r.optDouble("hourlyRate", 0.0),
                 hours = r.optDouble("hours", 0.0),
                 dailyRate = r.optDouble("dailyRate", 0.0),
+                isLegalHoliday = r.optBoolean("isLegalHoliday", false),
                 isHoliday = r.optBoolean("isHoliday", false),
                 isWeekend = r.optBoolean("isWeekend", false),
                 bonus = r.optDouble("bonus", 0.0),
@@ -116,8 +122,15 @@ class DataStore(private val ctx: Context) {
         )
     }
 
+    /** 普通节假日（2倍），格式 yyyy-MM-dd */
     fun isHoliday(date: String): Boolean {
         val settings = loadSettings()
         return settings.customHolidays.contains(date)
+    }
+
+    /** 法定节假日（3倍），格式 yyyy-MM-dd */
+    fun isLegalHoliday(date: String): Boolean {
+        val settings = loadSettings()
+        return settings.legalHolidayDates.contains(date)
     }
 }
